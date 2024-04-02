@@ -1,0 +1,561 @@
+---
+title: "Final Project - Group 10"
+author: "Aishwarya Jawalkar, Ashutosh Lonkar, Samarth Sathe"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(completejourney)
+library(tidyverse)
+library(ggplot2)
+```
+
+# {.tabset}
+
+## Introduction
+
+<center> ![](C:\Users\samar\OneDrive\Desktop\Regork.jpg) </center>
+  
+
+<p align="justify">   
+In this analysis, we aim to address a critical business problem concerning the disparities in total sales value among different age groups within the Regork customer base. The significance of this issue lies in the potential for substantial revenue growth that can be unlocked by tapping into currently underperforming customer segments. The Regork CEO should be keenly interested in this analysis as it directly impacts the company's bottom line and growth prospects.
+</p>
+  
+**Methodology and Data:**
+<p align="justify"> 
+To tackle this problem, we leveraged a combination of: 
+  
+* campaigns: campaigns received by each household
+* campaign_descriptions: campaign metadata (length of time active)
+* coupons: coupon metadata (UPC code, campaign, etc.)
+* coupon_redemptions: coupon redemptions (household, day, UPC code, campaign)
+* demographics: household demographic data (age, income, family size, etc.)
+products
+* transaction<-get_transaction(): To get the full transactions data set. Contains transaction-level product purchases by households.
+* promotions<-get_promotions(): To get the full promotions data set. Contains product placement information corresponding to campaigns.
+</p>
+
+  
+<p align="justify">   
+We integrated these diverse data sources using common identifiers like household IDs, UPC codes, and campaign affiliations. This integration allowed us to establish meaningful relationships among the datasets. Data wrangling involved preprocessing and cleaning the data to ensure accuracy and consistency. This step included handling missing values, transforming data types, and aggregating information when necessary. EDA was conducted to gain insights into the data. We explored the distribution of sales, the effectiveness of different campaigns, and the influence of promotions on customer behavior.
+</p>
+
+  
+**Proposed Solution:**
+<p align="justify">  
+Our analysis will provide the Regork CEO with a comprehensive understanding of the factors contributing to the observed differences in total sales across various age groups. We will identify potential growth opportunities by delving into customer behavior, product preferences, and marketing effectiveness. By the end of this analysis, we aim to propose data-driven strategies that can help boost sales in underperforming age groups, such as 19-24, 25-34, 55-64, and 65+. These strategies may include targeted marketing campaigns, product bundling, or promotional offers, all designed to engage and capture the market share of these age groups. Ultimately, our goal is to empower the Regork CEO with actionable insights that can drive revenue growth and ensure a more balanced distribution of sales across different customer segments.
+</p>
+
+## Packages Required
+
+<h4>The following R packages are required in order to run the code in this R project:</h4>
+  
+
+```{r}
+library(completejourney)          # grocery store shopping transactions data from group of 2,469 households
+library(ggplot2)                  # data visualization plotting system using "Grammar of Graphics"
+library(knitr)                    # dynamic report generation in R
+library(tidyverse)                # tidying data and working with other R packages
+library(dplyr)                    # manipulating and transforming data (i.e., filtering, joining, etc.)
+library(viridis)                  # provides a set of color palettes for data visualization.
+```
+
+<h4> Get the complete Journey Transaction and Promotions Dataset</h4>
+```{r}
+#Due to the size of the transactions and promotions data, the package provides a sampling of the data built-in with transactions_sample and promotions_sample. However, you can access the full promotions and transactions data sets from the source GitHub repository with the following:
+transactions<- get_transactions()
+promotions <- get_promotions()
+```
+
+## Exploratory Data Analysis
+    
+<p align="justify">
+In this phase of our analysis, we delve into the data to gain a comprehensive understanding of the total sales by age group. The primary objective is to identify age groups that exhibit lower sales figures, signifying potential growth opportunities.
+
+Our EDA process involves examining the sales distribution across various age groups within our customer base. We aim to pinpoint specific age demographics that contribute less to the total sales revenue. By doing so, we can highlight potential segments where targeted strategies and interventions may lead to increased engagement and higher sales.
+</p>
+
+<h4> Analysis of Total Sales by Age Group </h4>
+```{r include=TRUE}
+filtered_data <- demographics %>%
+  inner_join(transactions, by = "household_id") %>%
+  filter(age %in% c("19-24","25-34", "55-64", "65+", "45-54", "35-44")) %>%
+  group_by(age) %>%
+  summarize(total = sum(sales_value)) %>%
+  arrange(age, desc(total))
+
+highest_sales <- filtered_data %>%
+  group_by(age) %>%
+  summarize(total = max(total))
+
+
+ggplot(filtered_data, aes(x = age, y = total)) +
+  geom_bar(stat = "identity", position = "dodge",fill="lightblue") +
+  labs(title = "Total Sales Comparison by Age Group",
+       x = "Age Group",
+       y = "Total Sales($)") +
+  theme_minimal()+
+    geom_text(data = highest_sales, aes(label = total), vjust = -0.5, color = "black")
+```
+
+From the grouped bar plot, it is evident that the total sales vary across different age groups. Notably, the age groups '45-54' and '35-44' consistently exhibit significantly higher sales compared to the other age groups, which include '19-24,' '25-34', '55-64,' and '65+'. These two age groups, '45-54' and '35-44,' stand out as key contributors to the overall sales revenue, suggesting that they represent lucrative market segments with substantial purchasing power. The same is evident by the sales trent graph as well.
+
+```{r}
+color_palette <- c("#FF5733", "#FFD700", "#228B22", "#9400D3", "#00BFFF", "#8A2BE2")
+line_styles <- c("solid", "dashed", "dotdash", "longdash", "dotted", "twodash")
+
+sales_data <- transactions %>%
+  inner_join(demographics) %>%
+  filter(age %in% c("25-34", "19-24", "55-64", "65+", "45-54", "35-44"))
+
+sales_summary <- sales_data %>%
+  group_by(age, week) %>%
+  summarise(total_sales = sum(sales_value))
+
+linetype_mapping <- data.frame(age = unique(sales_summary$age), linetype = line_styles)
+
+ggplot(sales_summary, aes(x = week, y = total_sales, color = age, linetype = age, group = age)) +
+  geom_line() +
+  scale_color_manual(values = color_palette) +
+  scale_linetype_manual(values = linetype_mapping$linetype) +
+  labs(title = "Sales Trend by Age Group",
+       x = "Week",
+       y = "Total Sales($)") +
+  theme_minimal()
+```
+
+  
+To gain a deeper understanding of why some age groups might not be generating sales at the same level as '45-54' and '35-44', we need to explore additional factors.
+
+<h4> Investigating Coupon Redemption and Campaign Participation </h4>
+```{r include=TRUE}
+age_groups_combined <- list(c("25-34", "19-24", "55-64", "65+"), c("45-54", "35-44"))
+group_names <- c("25-34, 19-24, 55-64, 65+", "45-54, 35-44")
+
+redemption_counts <- list()
+
+for (i in 1:length(age_groups_combined)) {
+  age_groups <- age_groups_combined[[i]]
+  
+    total_coupon_redemptions <- transactions %>%
+    inner_join(coupon_redemptions) %>%
+    filter(yday(redemption_date) == yday(transaction_timestamp)) %>%
+    inner_join(demographics) %>%
+    filter(age %in% age_groups)
+  
+    total_redemption_count <- nrow(total_coupon_redemptions)
+  
+  redemption_counts[[i]] <- total_redemption_count
+}
+
+
+pie_data <- data.frame(Group = group_names, RedemptionCount = unlist(redemption_counts))
+
+custom_colors <- c("royalblue", "lightblue")
+
+ggplot(pie_data, aes(x = "", y = RedemptionCount, fill = Group)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Coupon Redemption Counts by Age Group",
+       x = NULL,
+       y = NULL) +
+  theme_void() +
+  theme(legend.position = "right")+
+  geom_text(aes(label = RedemptionCount), position = position_stack(vjust = 0.5))+
+  scale_fill_manual(values = custom_colors)
+
+combined_data <- demographics %>%
+  inner_join(campaigns, by = "household_id")
+
+age_group_participation <- combined_data %>%
+  group_by(age) %>%
+  summarise(count = n())
+
+age_group_participation$age <- factor(age_group_participation$age, levels = unique(age_group_participation$age))
+
+ggplot(age_group_participation, aes(x = age, y = count)) +
+  geom_bar(stat = "identity", fill = "lightblue") +
+  labs(title = "Age Group Participation in Campaigns",
+       x = "Age Group",
+       y = "Participation count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))+
+  geom_text(aes(label = count), vjust = -0.5, size = 3)
+
+```
+
+
+For the age groups '25-34,' '19-24,' '55-64,' and '65+,' it is evident that both the coupon redemption rate and campaign participation are relatively low. These findings help explain why these age groups contribute to lower total sales compared to other groups. With lower coupon redemption rates and fewer campaign participations, there may be untapped potential to engage and incentivize these age groups more effectively to boost their total sales contributions. By focusing on these age groups and enhancing our promotional efforts, we can aim to tap into their market potential and drive higher sales. We will be conducting an analysis to identify the top 10 products most frequently purchased by the age groups '25-34,' '19-24,' '55-64,' and '65+'. This analysis is aimed at gaining insights that can be leveraged to enhance sales strategies and better cater to the preferences of these age groups, ultimately contributing to increased sales within these demographics.
+
+
+<h3> Top 10 Products Analysis by Age Groups </h3>
+
+We have conducted an analysis to identify the top 10 products purchased by specific age groups (19-24, 25-34, 55-64, and 65+). This information provides valuable insights into the preferences of these age groups and presents opportunities for increasing sales.
+
+To leverage this data for sales growth, we can consider several strategies:
+
+* Targeted Coupons: By offering coupons or discounts on the top 10 products within each age group, we can incentivize purchases and attract more customers to these items.
+
+* Tailored Campaigns: Design marketing campaigns that highlight these top products, focusing on the age groups that purchase them the most. Personalized campaigns can engage customers and drive sales.
+
+* Product Bundling: Identify complementary products that are often purchased together with these top products. For example, if a particular age group frequently buys cheese, consider bundling it with wine or other related products to encourage additional purchases.
+
+* Product Placement: Optimize the placement of these products in stores or online platforms to enhance visibility and convenience for customers. Strategic placement can increase impulse purchases.
+
+By implementing these strategies, we aim to not only increase sales of the top products within these age groups but also enhance the overall shopping experience for our customers. This data-driven approach allows us to tailor our marketing and promotional efforts to the specific preferences of each age group, ultimately driving growth in sales and customer satisfaction.
+
+```{r include=TRUE}
+combined_data <- transactions %>%
+  inner_join(demographics, by = "household_id") %>%
+  inner_join(products)
+
+age_groups_of_interest <- c("19-24", "25-34", "55-64", "65+")
+
+top_products_by_age <- combined_data %>%
+  filter(age %in% age_groups_of_interest) %>%
+  group_by(age, product_category) %>%
+  summarise(total_sales = sum(sales_value)) %>%
+  arrange(age, desc(total_sales)) %>%
+  group_by(age) %>%
+  top_n(10, total_sales)
+
+ggplot(top_products_by_age, aes(x = age, y = total_sales, fill = product_category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Sales Distribution of Top 10 Products by Age Group",
+       x = "Age Group",
+       y = "Total Sales Value ($)") +
+  theme_minimal()+
+  scale_y_continuous(labels = scales::comma)
+```
+
+## Hypothesis {.tabset}
+
+<p align="justify">   
+These hypotheses are developed based on a comprehensive analysis of data from Regork, aimed at understanding and improving the sales and campaign participation of specific age groups The data analysis revealed certain patterns and trends, indicating that this age group has room for growth in both engagement and sales. By tailoring strategies to the preferences and behaviors of this demographic, Regork aims to maximize its potential and achieve stronger market penetration.
+</p>
+
+### Age group 19-24
+```{r}
+product_data <- transactions %>%
+  inner_join(demographics) %>%
+  filter(age %in% c("19-24")) %>%
+  inner_join(products, by = "product_id") %>%
+  group_by(product_category) %>%
+  summarize(quantity_bought = n_distinct(household_id)) %>%
+  arrange(desc(quantity_bought)) %>%
+  top_n(10)
+
+color_palette <- viridis_pal(option = "C")(nrow(product_data))
+
+ggplot(product_data, aes(x = "", y = quantity_bought, fill = product_category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Top 10 Products Bought by Age Group '19-24'",
+       x = NULL,
+       y = NULL) +
+  theme_void() +
+  theme(legend.position = "right") +
+  geom_text(aes(label = quantity_bought), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = color_palette)
+```
+
+  
+<h4> <center><b>To Increase Campaign Participation:</b></h4></center>
+
+<p align="justify">   
+**Leverage Social Media:** Regork can make use of popular social media platforms such as Instagram, TikTok, Snapchat, and Twitter to connect with the younger audience aged 19-24. By creating engaging content, running targeted ad campaigns, and collaborating with influencers who have a strong presence in this age group, Regork can increase its visibility and engagement.
+</p>
+
+<p align="justify">   
+**Interactive Events and Workshops:** Organizing interactive events, cooking classes, or workshops related to food, nutrition, or cooking can be an effective strategy. These hands-on experiences and learning opportunities can attract and engage the 19-24 age group.
+</p>
+
+<p align="justify">   
+**Gamification and Loyalty Programs:** Integrating gamification elements and loyalty programs within the Regork app can encourage active participation. By offering rewards, points, or badges for various activities such as making purchases and referring friends, Regork can motivate the younger audience to interact more with the platform.
+</p>
+
+<h4> <center><b>To Increase Sales:</b></h4></center>
+
+<p align="justify">   
+**Targeted Promotions and Coupons:**  Regork can introduce a "Dairy Delight" package that includes popular items like cheese, fluid milk products, and ice cream/milk/sherbet, along with a small sample or discounted offerings of less-purchased items like non-dairy beverages and veal. This package not only promotes the sale of less popular items but also provides variety and encourages larger purchases, ultimately increasing revenue.
+</p>
+
+
+<p align="justify">   
+**Limited-Time Offers and Flash Sales:** Implementing a 24-hour flash sale offering a 30% discount on categories such as WATCHES/CALCULATORS/LOBBY (Not Brought), AUDIO/VIDEO PRODUCTS (9 brought), and COOKWARE & BAKEWARE (9 brought) can create a sense of urgency and drive purchases. This strategy is particularly effective among the tech-savvy '19-25' age group who are more responsive to time-limited offers.
+</p>
+
+![](C:\Users\samar\Downloads\19-24.png)
+
+### Age group 25-34
+
+```{r}
+product_data <- transactions %>%
+  inner_join(demographics) %>%
+  filter(age %in% c("25-34")) %>%
+  inner_join(products, by = "product_id") %>%
+  group_by(product_category) %>%
+  summarize(quantity_bought = n_distinct(household_id)) %>%
+  arrange(desc(quantity_bought)) %>%
+  top_n(10)
+
+color_palette <- viridis_pal(option = "C")(nrow(product_data))
+
+ggplot(product_data, aes(x = "", y = quantity_bought, fill = product_category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Top 10 Products Bought by Age Group '25-34'",
+       x = NULL,
+       y = NULL) +
+  theme_void() +
+  theme(legend.position = "right") +
+  geom_text(aes(label = quantity_bought), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = color_palette)
+
+```
+
+<p align="justify">  
+In order to improve both sales and campaign engagement within the age group of 25-34, Regork should adopt targeted strategies that align with the preferences, lifestyles, and purchasing behaviors of this demographic.
+</p>
+
+<h4> <center> <b> Campaign Engagement Strategies</b></center></h4>
+
+<p align="justify">  
+**Personalized Email Campaigns:** Regork can implement personalized email campaigns to share exclusive product offers, discounts, and updates tailored specifically to the preferences and purchase history of individuals in the 25-34 age group. By analyzing their online behavior, Regork can provide content that resonates with their interests and buying patterns.
+</p>
+
+<p align="justify">  
+**Online Contests and Challenges:** Organizing online contests, challenges, or giveaways related to Regork's product range can significantly boost engagement. Offering attractive prizes, discounts, or special promotions for contest winners will encourage active participation and interaction with the brand.
+</p>
+
+
+<p align="justify">  
+**Customer Testimonials:** Encouraging satisfied customers within the 25-34 age bracket to provide genuine reviews and testimonials can help build trust and credibility. Sharing these positive experiences on various platforms will enhance the brand's reputation and attract more consumers within the same age group.
+</p>
+
+<center> <h4><b>Sales Enhancement Strategies</b></h4></center>
+
+**For Products That Are Not Frequently Purchased:**
+
+**Bundle Offer: "Variety Delights Pack"**
+
+<p align="justify">  
+Combine diverse products such as MISCELLANEOUS CROUTONS, RESTRICTED DIET items, TOYS, and GIFT & FRUIT BASKETS into a single bundle.
+Promote the offer with an enticing message: "Try our 'Variety Delights Pack' at just $15.99! It includes MISCELLANEOUS CROUTONS, RESTRICTED DIET items, a TOY surprise, and a GIFT & FRUIT BASKETS selection. Enjoy a delightful mix of flavors and surprises!"
+This concise and appealing message will highlight the bundle offer and encourage customers to explore a variety of products at a special price.
+
+
+**For Products That Are Frequently Purchased and Those Not Frequently Purchased:**
+
+**Bundle Offer: "Variety Delights Pack"**
+
+<p align="justify">  
+Create a bundled package that includes both frequently purchased items and those that are less popular.
+Offer this package at a discounted price of $15.99.
+Promote it with a message like: "Indulge in our 'Variety Delights Pack' for just $15.99! This exclusive bundle includes MISCELLANEOUS CROUTONS, RESTRICTED DIET items, a TOY surprise, and a GIFT & FRUIT BASKETS selection. Savor a delightful mix of flavors and surprises!"
+This compelling message highlights the enticing offer and encourages customers to explore a diverse range of products, catering to their varying preferences.
+</p>
+
+![](C:\Users\samar\Downloads\25-34.png)
+
+### Age group 55-64
+
+```{r}
+product_data <- transactions %>%
+  inner_join(demographics) %>%
+  filter(age %in% c("55-64")) %>%
+  inner_join(products, by = "product_id") %>%
+  group_by(product_category) %>%
+  summarize(quantity_bought = n_distinct(household_id)) %>%
+  arrange(desc(quantity_bought)) %>%
+  top_n(10)
+
+color_palette <- viridis_pal(option = "C")(nrow(product_data))
+
+ggplot(product_data, aes(x = "", y = quantity_bought, fill = product_category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Top 10 Products Bought by Age Group '55-64'",
+       x = NULL,
+       y = NULL) +
+  theme_void() +
+  theme(legend.position = "right") +
+  geom_text(aes(label = quantity_bought), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = color_palette)
+```
+To enhance campaign participation and increase sales within the age group of 55-64, Regork should implement targeted strategies that align with the unique needs, preferences, and active lifestyles of this demographic.
+
+<h4> <center> <b> Campaign Engagement Strategies</b></center></h4>
+
+<p align="justify">  
+**Product Development:** Regork should consider developing products and services tailored to the specific needs and preferences of the 55-64 age group. This may include health-conscious options, easy-to-prepare meals, and products that promote an active lifestyle. Collaborating with health professionals or nutritionists to endorse or recommend specific products can lend credibility. Testimonials or recommendations from these experts should be incorporated into marketing materials.
+</p>
+
+<p align="justify">  
+**In-Store Events and Demonstrations:** Hosting in-store events or product demonstrations focused on items popular among the 55-64 age group is essential. These events should provide opportunities for customers to sample products, ask questions, and learn more about offerings that cater to their interests and requirements.
+</p>
+
+
+<p align="justify">  
+**Community Engagement:** Regork should explore partnerships with senior organizations or community centers to promote events, offers, and campaigns. Engaging with seniors within the community and offering assistance related to their grocery needs can build trust and loyalty. Collaborative efforts will help ensure that campaigns reach the intended audience effectively.
+</p>
+
+<h4> <center> <b> Sales Enhancement Strategies </b></center></h4>
+
+**For Products That Are Not Frequently Purchased:**
+
+**Bundle Offer 1: "Homemaker's Delight"**
+
+<p align="justify">  
+This bundle combines popular items frequently purchased by the 55-64 age group: BAKED SWEET GOODS, BREAKFAST SWEETS, ELECTRICAL SUPPLIES, and NEWSPAPER.
+It also includes a complementary choice from products they may not have purchased as often: HOME HEALTH CARE or SERVICE BEVERAGE.
+Promotion: "Discover our 'Homemaker's Delight' package! Indulge in your favorite breakfast items, electrical supplies, and choose between HOME HEALTH CARE or SERVICE BEVERAGE for added convenience."
+</p>
+
+
+**Bundle Offer 2: "Evening Relaxation"**
+
+<p align="justify">  
+This bundle combines items commonly bought by the 55-64 age group: DOMESTIC WINE, MISC WINE, SNACKS, and CIGARETTES.
+It offers a complementary choice from products they may not have explored as much: FIREWORKS or CIGARS.
+**Promotion:** "Relax and unwind with our 'Evening Relaxation' package! Select your preferred wine, snacks, and add some excitement with FIREWORKS or CIGARS."
+By crafting bundles that merge beloved items with those less frequently purchased, Regork provides enticing incentives for the 55-64 age group to try new products. This strategy has the potential to not only broaden their product preferences but also enhance overall revenues.
+
+These strategies are formulated with the aim of driving sales growth and active engagement within the 55-64 age group, contributing to the long-term success of Regork.
+</p>
+
+![](C:\Users\samar\Downloads\54-65.png)
+  
+
+### Age group 65+
+```{r}
+product_data <- transactions %>%
+  inner_join(demographics) %>%
+  filter(age %in% c("65+")) %>%
+  inner_join(products, by = "product_id") %>%
+  group_by(product_category) %>%
+  summarize(quantity_bought = n_distinct(household_id)) %>%
+  arrange(desc(quantity_bought)) %>%
+  top_n(10)
+
+color_palette <- viridis_pal(option = "C")(nrow(product_data))
+
+ggplot(product_data, aes(x = "", y = quantity_bought, fill = product_category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  labs(title = "Top 10 Products Bought by Age Group '65+'",
+       x = NULL,
+       y = NULL) +
+  theme_void() +
+  theme(legend.position = "right") +
+  geom_text(aes(label = quantity_bought), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = color_palette)
+```
+In order to increase campaign participation and elevate sales within the age group of 65 and older, Regork should implement strategies tailored to the unique needs, preferences, and circumstances of this demographic.
+
+<h4> <center> <b> Campaign Engagement Strategies</b></center></h4>
+
+<p align="justify"> 
+**Senior-Friendly Store Experience:** Regork should prioritize creating stores that are senior-friendly. This includes clear signage, wide aisles, comfortable seating areas, and readily available assistance for those who require it. Ensuring a comfortable and accessible shopping experience is essential to engage seniors effectively.
+</p>
+
+<p align="justify"> 
+**Exclusive Senior Discounts:** To incentivize senior customers, Regork should introduce special discounts on specific days of the week exclusively for seniors. These discounts should be prominently highlighted in marketing campaigns to encourage seniors to shop on those designated days.
+</p>
+
+
+<p align="justify"> 
+**Tailored Marketing Communication:** Marketing communication aimed at seniors should be tailored to address their specific needs and preferences. This involves using simple language, larger fonts, and visual aids to enhance comprehension and engagement.
+</p>
+
+<p align="justify"> 
+**Highlight Relevant Products:** Regork should showcase and advertise products that cater to seniors' requirements. This includes low-sodium options, easy-to-open packaging, and items designed for specific health conditions. Drawing attention to these products is crucial to attract senior shoppers.
+</p>
+
+
+<p align="justify"> 
+**Community Engagement:** Participation in or sponsorship of community events involving the senior population should be a priority. This could involve health fairs, charity events, or local gatherings. Building connections within the senior community through such events can foster trust and increase brand loyalty.
+</p>
+
+<h4> <center> <b> Sales Enhancement Strategies</b></center></h4>
+
+**For Products That Are Not Frequently Purchased:**
+
+**Bundle Offer 1: "Senior Snack Mix"**
+
+<p align="justify"> 
+This bundle combines popular items that are often purchased by the 65+ age group: CRACKERS/MISC BKD FD, EGGS, VEGETABLES - SHELF STABLE, and BAKED BREAD/BUNS/ROLLS.
+It also includes a complementary choice from products they may not have bought as frequently: NATURAL HBC or HOME FURNISHINGS.
+Offering a discounted price of $19.99 for the bundle creates an attractive incentive.
+Promotion: "Indulge in our 'Senior Snack Mix' package, priced at only $19.99! It includes a delightful variety of snacks, fresh eggs, and essential shelf-stable vegetables. Choose either NATURAL HBC or HOME FURNISHINGS to enhance your daily routine."
+</p>
+
+**Bundle Offer 2: "Healthy Essentials"**
+<p align="justify"> 
+This bundle combines items frequently purchased by the 65+ age group: FLUID MILK PRODUCTS, SOFT DRINKS, COLD CEREAL, and BEEF.
+It includes a complementary choice from products they may not have explored as much: NDAIRY/TEAS/JUICE/SOD or NATURAL VITAMINS.
+A discounted price of $29.99 for the bundle creates an appealing offer.
+Promotion: "Prioritize your health with our 'Healthy Essentials' package, available at just $29.99! This comprehensive bundle features essential dairy products, refreshing drinks, and quality proteins. Choose either NDAIRY/TEAS/JUICE/SOD or NATURAL VITAMINS for added benefits."
+By implementing these strategies, Regork aims to enhance both campaign participation and sales within the 65+ age group, catering to their unique needs and strengthening the brand's relationship with this valuable demographic.
+</p>
+
+![](C:\Users\samar\Downloads\65+.png)
+
+## Summary
+
+<p align="justify"> 
+The problem at hand is how to enhance campaign participation and increase sales for various age groups in Regork's customer base. Specifically, the analysis focuses on age groups '19-24,' '25-34,' '55-64,' and '65+,' aiming to provide actionable insights for targeted marketing strategies.
+</p>
+
+<p align="justify"> 
+This analysis employed Exploratory Data Analysis (EDA) techniques to derive insights and hypotheses. Various datasets, including customer demographics, transaction history, product details, and campaign data, were used. The approach involved data cleaning, filtering, and aggregation to uncover patterns and trends.
+</p>
+
+<p align="justify"> 
+**Age Group Preferences:** Different age groups exhibited distinct preferences for product categories. For example, '19-24' and '25-34' showed interest in SNACKS, while '55-64' favored FLUID MILK PRODUCTS.
+</p>
+
+<p align="justify"> 
+**Campaign Participation:** Certain age groups, such as '25-34,' had lower campaign participation, indicating potential areas for improvement.
+</p>
+
+<p align="justify"> 
+**Sales Trends:** '45-54' and '35-44' consistently demonstrated higher sales, suggesting their significance in revenue generation.
+</p>
+
+<p align="justify"> 
+**Bundling Opportunities:** Bundling popular items with less-purchased products could drive sales. Tailored bundle offers were proposed for each age group.
+</p>
+
+<p align="justify"> 
+**Implications to the Consumer:** Regork should consider implementing targeted strategies to increase campaign participation and sales for specific age groups. For instance, personalized email campaigns, online contests, and tailored marketing communication can engage younger audiences ('19-24' and '25-34'). Bundled offers combining preferred and less-purchased products can incentivize buying among older age groups ('55-64' and '65+').
+</p>
+
+<p align="justify"> 
+**For the CEO:** To the Regork CEO, we propose implementing these strategies as a means to enhance engagement and revenue. The recommendations include senior-friendly store enhancements, exclusive senior discounts, and tailored marketing for the '65+' age group.
+</p>
+
+  
+**Limitations and Future Improvements:**
+
+<p align="justify"> 
+**Data Quality:** The analysis is contingent on data quality, and potential inaccuracies or omissions could affect results.
+</p>
+
+<p align="justify"> 
+**Causality:** EDA provides correlations, but establishing causality requires further analysis.
+</p>
+
+<p align="justify"> 
+**External Factors:** Market dynamics and external factors were not considered but can influence sales and engagement.
+</p>
+
+<p align="justify"> 
+**Model Development:** Future work could involve predictive modeling to forecast campaign effectiveness and sales trends.
+</p>
+
+<p align="justify"> 
+**Continuous Monitoring:** Implementing strategies should be followed by continuous monitoring and refinement to adapt to changing consumer behavior.
+</p>
