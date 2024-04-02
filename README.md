@@ -1,5 +1,4 @@
 # Data-Wrangling-Data-Driven-Growth-Opportunity-Analysis
-Title: Data Analysis Project: Enhancing Campaign Participation and Sales for Different Age Groups
 
 Description:
 This project aimed to enhance campaign participation and increase sales for various age groups within Regork’s customer base. Utilizing SQL, R, and Tableau, the analysis focused on age groups '19-24,' '25-34,' '55-64,' and '65+,' employing Exploratory Data Analysis (EDA) techniques to derive actionable insights for targeted marketing strategies.
